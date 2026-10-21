@@ -46,6 +46,17 @@ html, body {
   width: var(--stage-w); height: var(--stage-h);
   transform-origin: top left;
 }
+/* Разтърсването живее тук, а не на #stage — там стои мащабът и двете
+   анимации на transform биха се изяли. */
+#shaker { position: absolute; inset: 0; }
+#shaker.shake   { animation: shake .26s ease-out; }
+#shaker.shake-b { animation: shake .5s  ease-out; }
+@keyframes shake {
+  10%  { transform: translate(-13px, 6px) rotate(-.35deg); }
+  30%  { transform: translate(11px, -8px) rotate(.3deg); }
+  52%  { transform: translate(-8px, -4px) rotate(-.2deg); }
+  74%  { transform: translate(6px, 4px) rotate(.12deg); }
+}
 
 /* Лентата, в която живее играта. Горната трета — лицето остава свободно,
    долната четвърт е за коментарите на TikTok. */
@@ -101,9 +112,77 @@ html, body {
 }
 #tally .dash { font-size: 40px; opacity: .75; }
 
+/* ---------- ръбовете светят, когато единият отбор е на крачка ---------- */
+
+/* Само срещу лентата с играта. По цялата височина би покрило човека
+   пред камерата, а идеята е да светне въжето, не стаята. */
+.edge {
+  position: absolute; top: 170px; height: 620px; width: 150px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s linear;
+}
+/* Маската маха правия ръб долу — иначе светенето изглежда като залепено
+   правоъгълниче, а не като сияние */
+.edge.left, .edge.right {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 22%,
+                                      #000 70%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 22%,
+                              #000 70%, transparent 100%);
+}
+.edge.left {
+  left: 0;
+  background: linear-gradient(90deg, var(--boys-light), transparent);
+}
+.edge.right {
+  right: 0;
+  background: linear-gradient(270deg, var(--girls-light), transparent);
+}
+.edge.on { opacity: .55; animation: edgePulse .7s ease-in-out infinite; }
+@keyframes edgePulse { 50% { opacity: .22; } }
+
 /* ---------- въжето: героят на картината ---------- */
 
 #arena { position: relative; height: 300px; }
+
+/* Искрите излитат от възела към този, който дърпа в момента. Те са
+   единственото нещо, което показва, че се води бой, докато въжето още
+   не е помръднало. */
+#sparks {
+  position: absolute; inset: 0; z-index: 30;
+  pointer-events: none; overflow: visible;
+}
+.spark {
+  position: absolute; top: 136px;
+  border-radius: 50%;
+  border: 4px solid var(--ink);
+  will-change: transform, opacity;
+}
+.spark.boys  { background: var(--boys-light); }
+.spark.girls { background: var(--girls-light); }
+/* Част от искрите са парчета коноп — въжето се къса от опъване */
+.spark.fibre {
+  background: var(--rope); border-radius: 3px;
+  border-width: 3px;
+}
+
+/* Последните секунди. Числото стои под лентата, в празното — на въжето
+   би се блъскало с възела точно когато всички гледат възела. */
+#count {
+  position: absolute; top: 800px; left: 0; right: 0;
+  text-align: center; z-index: 45;
+  font-weight: 900; font-size: 300px; line-height: 1;
+  color: var(--win);
+  -webkit-text-stroke: 12px var(--ink);
+  paint-order: stroke fill;
+  pointer-events: none;
+}
+#count.beat { animation: countIn .9s ease-out; }
+@keyframes countIn {
+  0%   { transform: scale(1.9); opacity: 0; }
+  18%  { transform: scale(1);   opacity: 1; }
+  80%  { transform: scale(1);   opacity: 1; }
+  100% { transform: scale(.8);  opacity: 0; }
+}
 
 #rope-line {
   position: absolute;
@@ -209,6 +288,17 @@ html, body {
   from { transform: translateY(-120px) scale(.4); opacity: 0; }
 }
 
+/* Напън: докато отборът дърпа силно, хората му се люлеят назад. Това е
+   разликата между „кръгчета на черта" и „хора, които теглят". */
+.puller.strain.boys  { animation: strainL .38s ease-in-out infinite; }
+.puller.strain.girls { animation: strainR .38s ease-in-out infinite; }
+@keyframes strainL {
+  50% { transform: translate(-9px, 3px) rotate(-6deg); }
+}
+@keyframes strainR {
+  50% { transform: translate(9px, 3px) rotate(6deg); }
+}
+
 /* ---------- под въжето ---------- */
 
 #underline {
@@ -258,9 +348,11 @@ html, body {
   display: flex; flex-direction: column; gap: 16px;
   transition: opacity .2s linear;
 }
-/* Докато е вдигната картата за края на кръга, долу не се чете нищо —
-   едно нещо на екрана, а не две едно върху друго. */
-#stage.curtain-on #below { opacity: 0; }
+/* Докато е вдигната карта — за края на кръга или за нов последовател —
+   долу не се чете нищо: едно нещо на екрана, а не две едно върху друго. */
+#stage.curtain-on #below,
+#stage.takeover-on #below,
+#stage.count-on #below { opacity: 0; }
 
 #powers { display: flex; flex-direction: column; gap: 14px; }
 .power {
@@ -304,6 +396,47 @@ html, body {
 .msg.follow { background: var(--win); font-weight: 900; font-size: 34px; }
 .msg.gift   { background: #FFE9A8; }
 @keyframes pop { from { transform: translateY(16px); opacity: 0; } }
+
+/* ---------- новият последовател взима целия екран ---------- */
+
+#takeover {
+  position: absolute; top: 740px; left: 0; right: 0;
+  display: none; justify-items: center;
+  pointer-events: none;
+}
+#takeover.show { display: grid; }
+#takeover .card {
+  text-align: center;
+  padding: 36px 70px 44px;
+  background: var(--board);
+  border: 12px solid var(--ink);
+  border-radius: 32px;
+  box-shadow: 18px 18px 0 rgba(26, 20, 16, .45);
+  animation: burst .55s cubic-bezier(.16, 1.5, .4, 1);
+}
+#takeover .face {
+  width: 300px; height: 300px; margin: 8px auto 20px;
+  border-radius: 50%; overflow: hidden;
+  border: 10px solid var(--ink);
+  background: #fff;
+  display: grid; place-items: center;
+  font-weight: 900; font-size: 140px; color: var(--ink);
+}
+#takeover .face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#takeover.boys  .face { box-shadow: 0 0 0 14px var(--boys-light); }
+#takeover.girls .face { box-shadow: 0 0 0 14px var(--girls-light); }
+#takeover.none  .face { box-shadow: 0 0 0 14px var(--win); }
+#takeover .nm {
+  font-weight: 900; font-size: 74px; line-height: 1.05;
+  max-width: 740px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#takeover .team { font-weight: 700; font-size: 34px; margin-top: 8px; opacity: .75; }
+@keyframes burst {
+  0%   { transform: scale(.3) rotate(-6deg); opacity: 0; }
+  60%  { transform: scale(1.06) rotate(1.5deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
 
 /* ---------- краят на кръга ---------- */
 

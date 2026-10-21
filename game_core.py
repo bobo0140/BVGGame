@@ -73,6 +73,14 @@ POWER_TEXT = {
 
 POWER_SECONDS = {"storm": 15.0, "sabotage": 10.0, "giant": 20.0}
 
+# „Жар" — колко силно даден отбор дърпа ПРЕЗ ПОСЛЕДНИТЕ СЕКУНДИ. Позицията
+# на въжето сама по себе си не го казва: при две равни групи възелът стои
+# в центъра, а всъщност и двете страни блъскат като луди. Картината ползва
+# жарта за искрите, напъна на теглачите и звука — без нея екранът изглежда
+# мъртъв, докато всъщност се води бой.
+HEAT_TAU = 1.2        # секунди, докато жарта изстине
+HEAT_FULL = 0.22      # колко е „пълен огън", в части от прага за победа
+
 # Монета -> точки, но с таван. Без тавана един голям гифт решава кръга
 # сам и ограбва всички останали; с тавана е ефектен, без да е бутон
 # за моментална победа.
@@ -156,6 +164,7 @@ class Game:
         self.neutral_pulls: int = 0
         self._like_bucket: dict[str, tuple[float, float]] = {}
         self._peak_net: float = 0.0          # за нагласяването на прага
+        self.heat: dict[str, float] = {BOYS: 0.0, GIRLS: 0.0}
         # ВНИМАНИЕ: 'now or time.time()' е грешно — now=0.0 е лъжа в
         # Python и прескача на часовника, при което dt излиза нула
         # и пружината никога не сработва.
@@ -172,6 +181,7 @@ class Game:
         self.rope = 0.0
         self.powers.clear()
         self.neutral_pulls = 0
+        self.heat = {BOYS: 0.0, GIRLS: 0.0}
         for v in self.viewers.values():
             v.round_points = 0.0
         self.round_ends_at = now + self.s.round_seconds
@@ -290,6 +300,7 @@ class Game:
         # публиката и по него нагласяваме прага за следващия кръг.
         self._peak_net = max(self._peak_net,
                              abs(self.rope) * self.s.win_threshold)
+        self.heat[team] = self.heat.get(team, 0.0) + points / self.s.win_threshold
         if v is not None:
             v.round_points += points
             v.total += points
@@ -450,6 +461,13 @@ class Game:
         dt = max(0.0, now - self._last_tick)
         self._last_tick = now
 
+        # Жарта изстива винаги, не само докато тече кръг — иначе остава
+        # запалена през паузата и екранът кипи при спряна игра
+        if dt > 0:
+            cool = math.exp(-dt / HEAT_TAU)
+            for t in self.heat:
+                self.heat[t] *= cool
+
         if not self.running:
             return
 
@@ -559,5 +577,7 @@ class Game:
             "viewers_known": len(self.viewers),
             "comeback": {BOYS: round(self.comeback(BOYS), 2),
                          GIRLS: round(self.comeback(GIRLS), 2)},
+            "heat": {BOYS: round(min(1.0, self.heat[BOYS] / HEAT_FULL), 3),
+                     GIRLS: round(min(1.0, self.heat[GIRLS] / HEAT_FULL), 3)},
             "threshold": round(self.s.win_threshold),
         }

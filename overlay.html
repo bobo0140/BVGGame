@@ -9,8 +9,12 @@
 <body>
 
 <div id="stage">
+<div id="shaker">
 
   <div id="offline">Няма връзка с играта. Пусни приложението и опресни.</div>
+
+  <div class="edge left" id="edge-l"></div>
+  <div class="edge right" id="edge-r"></div>
 
   <div id="band">
 
@@ -36,6 +40,7 @@
       <div class="post left"></div>
       <div class="post right"></div>
       <div id="rope-line"></div>
+      <div id="sparks"></div>
       <div id="pullers"></div>
       <div id="knot">
         <div class="band"></div>
@@ -56,6 +61,16 @@
     <div id="ticker"></div>
   </div>
 
+  <div id="count"></div>
+
+  <div id="takeover">
+    <div class="card">
+      <div class="face" id="to-face"></div>
+      <div class="nm" id="to-name"></div>
+      <div class="team" id="to-team"></div>
+    </div>
+  </div>
+
   <div id="curtain">
     <div class="card">
       <div class="who" id="cur-who">Момчета</div>
@@ -65,7 +80,9 @@
   </div>
 
 </div>
+</div>
 
+<script src="sound.js"></script>
 <script src="overlay.js"></script>
 </body>
 </html>

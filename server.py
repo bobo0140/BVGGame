@@ -48,7 +48,7 @@ class Server:
     async def _h_file(self, req: web.Request) -> web.Response:
         name = req.match_info["name"]
         # Само нашите файлове — без ходене по папки
-        if name not in {"overlay.js", "overlay.css"}:
+        if name not in {"overlay.js", "overlay.css", "sound.js"}:
             raise web.HTTPNotFound()
         return web.FileResponse(WEB_DIR / name)
 

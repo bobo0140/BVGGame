@@ -401,6 +401,55 @@ def test_balance() -> None:
           f"{g2.rope:.3f} след {g2.s.decay_tau:.0f} сек тишина")
 
 
+def test_heat():
+    """
+    Жарта е това, което кара картината да кипи. Тя трябва да пламва от
+    дърпане, да изстива сама и да НЕ зависи от прага — иначе при голяма
+    публика екранът ще гори вечно, а при малка няма да светне никога.
+    """
+    print("\n--- Жар: колко силно се дърпа в момента ---")
+
+    g = Game(Settings(), now=0.0)
+    g.start_round(now=0.0)
+    check("в началото е студено", g.state(now=0.0)["heat"][BOYS] == 0.0)
+
+    # Изборът на отбор е коментар, а коментарът дърпа — значи пали
+    g.act(Act.COMMENT, "a", text="М", now=0.0)
+    check("дори изборът на отбор я пали", g.state(now=0.0)["heat"][BOYS] > 0,
+          f"{g.state(now=0.0)['heat'][BOYS]:.2f}")
+
+    for _ in range(40):
+        g.act(Act.LIKE, "a", count=10, now=0.0)
+    hot = g.state(now=0.0)["heat"]
+    check("тапането я вдига", hot[BOYS] > 0.3, f"{hot[BOYS]:.2f}")
+    check("другият отбор остава студен", hot[GIRLS] == 0.0)
+
+    g.tick(now=6.0)
+    cold = g.state(now=6.0)["heat"][BOYS]
+    check("изстива сама за секунди", cold < 0.05, f"{cold:.3f} след 6 сек")
+
+    # Едно и също дърпане, измерено като дял от прага, трябва да дава
+    # една и съща жар. Иначе при голяма публика екранът гори вечно, а
+    # при малка не светва никога.
+    def heat_at(threshold):
+        gg = Game(Settings(win_threshold=threshold, auto_tune=False), now=0.0)
+        gg.start_round(now=0.0)
+        gg._apply(BOYS, threshold * 0.2, None, 0.0)
+        return gg.state(now=0.0)["heat"][BOYS]
+
+    a, b = heat_at(250.0), heat_at(25000.0)
+    check("не зависи от големината на публиката", abs(a - b) < 0.01,
+          f"{a:.2f} срещу {b:.2f}")
+
+    # И накрая: жарта не бива да остава запалена през паузата
+    g.heat[BOYS] = 1.0
+    g.running = False
+    g.tick(now=12.0)
+    check("изстива и когато кръгът е свършил",
+          g.state(now=12.0)["heat"][BOYS] < 0.05,
+          f"{g.state(now=12.0)['heat'][BOYS]:.3f}")
+
+
 def main() -> int:
     print("=" * 64)
     print("Момчета срещу момичета — проверка на правилата")
@@ -416,6 +465,7 @@ def main() -> int:
     test_follow()
     test_round_end()
     test_state()
+    test_heat()
     test_balance()
     print("\n" + "=" * 64)
     print(f"Успешни: {PASS}   Неуспешни: {FAIL}")

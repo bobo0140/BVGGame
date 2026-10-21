@@ -16,15 +16,21 @@
   var MAX_PULLERS_PER_SIDE = 3;
   var PULLER_GAP = 104;      // кръговете са 92 — под 100 се слепват
   var PULLER_EDGE = 60;      // най-задният стои до своя стълб
-  var PULLER_DRAG = 70;      // колко ги влачи въжето, когато губят
+  var PULLER_DRAG = 55;      // колко ги влачи въжето, когато губят
   var NAMES_SHOWN = 3;       // по-назад имената само се слепват
   var MSG_LIFE_MS = 4500;
   var MSG_MAX = 3;
   var CURTAIN_MS = 5200;
 
+  var SPARK_MAX = 44;        // повече от това в OBS почва да скъсява кадри
+  var TAKEOVER_MS = 2900;
+
   var $ = function (id) { return document.getElementById(id); };
+  var S = window.BVGSound || null;
 
   var stage = $("stage");
+  var shaker = $("shaker");
+  var sparks = $("sparks");
   var knot = $("knot");
   var pullersBox = $("pullers");
   var powersBox = $("powers");
@@ -91,8 +97,13 @@
   /* ----------------------------------------------------------------- въжето */
 
   function knotPercent(rope) {
-    // 50% е центърът; до 41% в двете страни, за да не излиза от стълбовете
-    return 50 + Math.max(-1, Math.min(1, rope)) * 41;
+    // 50% е центърът; до 41% в двете страни, за да не излиза от стълбовете.
+    // Кривата е нарочна: малка преднина се вижда голяма. При две почти
+    // равни групи въжето иначе трепти около нулата и изглежда счупено,
+    // а всъщност се води бой. Победата пак е при 1, тъй че е честно.
+    var r = Math.max(-1, Math.min(1, rope));
+    var shown = Math.sign(r) * Math.pow(Math.abs(r), 0.65);
+    return 50 + shown * 41;
   }
 
   function drawRope(st) {
@@ -100,13 +111,78 @@
     knot.style.left = knotPercent(rope) + "%";
 
     var d = rope - lastRope;
-    if (Math.abs(d) > 0.035) {
+    if (Math.abs(d) > 0.02) {
       knot.classList.remove("yank-l", "yank-r");
       // Рестартиране на анимацията — без това втори силен тап не се вижда
       void knot.offsetWidth;
       knot.classList.add(d < 0 ? "yank-l" : "yank-r");
+      if (S) S.yank(d < 0 ? BOYS : GIRLS, Math.min(1, Math.abs(d) / 0.12));
+      if (Math.abs(d) > 0.06) shake(false);
     }
     lastRope = rope;
+  }
+
+  /* -------------------------------------------------------- разтърсване */
+
+  function shake(big) {
+    var cls = big ? "shake-b" : "shake";
+    shaker.classList.remove("shake", "shake-b");
+    void shaker.offsetWidth;
+    shaker.classList.add(cls);
+  }
+
+  /* ------------------------------------------------------------- искрите */
+
+  var liveSparks = 0;
+
+  function spark(team, knotX) {
+    if (liveSparks >= SPARK_MAX) return;
+    var el = document.createElement("div");
+    var fibre = Math.random() < 0.35;
+    el.className = "spark " + (team === BOYS ? "boys" : "girls")
+                 + (fibre ? " fibre" : "");
+    var size = fibre ? 16 + Math.random() * 16 : 26 + Math.random() * 20;
+    el.style.width = size + "px";
+    el.style.height = (fibre ? size * 0.55 : size) + "px";
+    el.style.left = (knotX - size / 2) + "px";
+    sparks.appendChild(el);
+    liveSparks++;
+
+    var dir = team === BOYS ? -1 : 1;
+    var dist = 170 + Math.random() * 340;
+    // Нагоре, не настрани: там екранът е празен и искрите се виждат,
+    // вместо да се губят зад лицата на теглачите
+    var up = -70 - Math.random() * 190;
+    var spin = (Math.random() - 0.5) * 540;
+    var a = el.animate(
+      [{ transform: "translate(0,0) rotate(0deg) scale(1)", opacity: 1 },
+       { transform: "translate(" + dir * dist * 0.55 + "px," + up * 0.75
+                  + "px) rotate(" + spin * 0.5 + "deg) scale(1.05)",
+         opacity: 1, offset: 0.55 },
+       { transform: "translate(" + dir * dist + "px," + (up + 120)
+                  + "px) rotate(" + spin + "deg) scale(.55)", opacity: 0 }],
+      { duration: 560 + Math.random() * 380,
+        easing: "cubic-bezier(.2,.65,.4,1)" });
+    a.onfinish = a.oncancel = function () {
+      if (el.parentNode) el.parentNode.removeChild(el);
+      liveSparks--;
+    };
+  }
+
+  function drawHeat(st) {
+    var heat = st.heat || {};
+    var knotX = knotPercent(st.rope || 0) / 100 * 1080;
+    // Състоянието идва 10 пъти в секунда; при пълен огън това прави към
+    // 40 искри в секунда на страна — гъсто, но не задръства
+    [BOYS, GIRLS].forEach(function (t) {
+      var h = Math.max(0, Math.min(1, heat[t] || 0));
+      if (h <= 0.02) return;
+      var n = Math.round(h * 4);
+      if (Math.random() < h * 4 - n) n++;
+      for (var i = 0; i < n; i++) spark(t, knotX);
+      if (S) S.tap(t, h);
+    });
+    return heat;
   }
 
   /* --------------------------------------------------------------- теглачите */
@@ -157,6 +233,10 @@
   function drawPullers(st) {
     var followers = st.followers || [];
     var rope = st.rope || 0;
+    var heat = st.heat || {};
+    var hot = {};
+    hot[BOYS] = (heat[BOYS] || 0) > 0.22;
+    hot[GIRLS] = (heat[GIRLS] || 0) > 0.22;
 
     var sides = {};
     sides[BOYS] = [];
@@ -176,14 +256,34 @@
       sides[team].push(f);
     }
 
+    // Последователите са малко, особено в началото — въжето оставаше
+    // празно. Останалите места ги заемат тези, които са изтеглили
+    // най-много този кръг. Така всеки, който тапа яко, се вижда на
+    // екрана, без да е длъжен да последва.
+    var leaders = st.leaders || {};
+    function fill(team) {
+      var list = sides[team].slice(-MAX_PULLERS_PER_SIDE).reverse();
+      var have = {};
+      list.forEach(function (x) { have[x.name] = true; });
+      var lead = leaders[team] || [];
+      for (var k = 0; k < lead.length && list.length < MAX_PULLERS_PER_SIDE; k++) {
+        if (have[lead[k].name]) continue;
+        list.push({ key: "L:" + lead[k].name, name: lead[k].name,
+                    avatar: lead[k].avatar, team: team });
+      }
+      return list;
+    }
+    var front = {};
+    front[BOYS] = fill(BOYS);
+    front[GIRLS] = fill(GIRLS);
+
     var seen = {};
     // Всеки отбор стои при своя стълб, не до възела. Въжето ги влачи:
     // губещите се местят към центъра, печелещите — назад.
     var drag = rope * PULLER_DRAG;
 
-    function place(list, dir) {
-      // Последните са най-отпред — новият последовател излиза най-напред
-      var recent = list.slice(-MAX_PULLERS_PER_SIDE).reverse();
+    function place(recent, dir) {
+      // recent[0] стои най-отпред, до възела — там излиза новият последовател
       for (var j = 0; j < recent.length; j++) {
         var f = recent[j];
         seen[f.key] = true;
@@ -198,6 +298,7 @@
         else cls += dir < 0 ? " boys" : " girls";
         if (el.classList.contains("fresh")) cls += " fresh";
         if (j >= NAMES_SHOWN) cls += " quiet";
+        if (!neutral[f.key] && hot[dir < 0 ? BOYS : GIRLS]) cls += " strain";
         el.className = cls;
 
         var x = dir < 0
@@ -208,8 +309,8 @@
       }
     }
 
-    place(sides[BOYS], -1);
-    place(sides[GIRLS], +1);
+    place(front[BOYS], -1);
+    place(front[GIRLS], +1);
 
     for (var key in pullerEls) {
       if (!seen[key]) {
@@ -275,6 +376,102 @@
     }, MSG_LIFE_MS);
   }
 
+  /* -------------------------------------------- последните десет секунди */
+
+  var lastCount = null;
+
+  function drawCount(st) {
+    var box = $("count");
+    var left = st.running ? Math.ceil(st.seconds_left) : 0;
+    if (!st.running || left > 10 || left <= 0) {
+      if (lastCount !== null) {
+        box.textContent = "";
+        stage.classList.remove("count-on");
+        lastCount = null;
+      }
+      return;
+    }
+    stage.classList.add("count-on");
+    if (left === lastCount) return;
+    lastCount = left;
+    box.textContent = String(left);
+    box.classList.remove("beat");
+    void box.offsetWidth;
+    box.classList.add("beat");
+    if (S) S.beep(left <= 3);
+  }
+
+  /* ------------------------------------------- когато единият е на крачка */
+
+  var dangerOn = false;
+
+  function drawDanger(st) {
+    var r = st.rope || 0;
+    var on = st.running && Math.abs(r) > 0.72;
+    $("edge-l").classList.toggle("on", on && r < 0);
+    $("edge-r").classList.toggle("on", on && r > 0);
+    if (on !== dangerOn) {
+      dangerOn = on;
+      if (S) S.siren(on);
+    }
+  }
+
+  /* ------------------------------------ новият последовател взима екрана */
+
+  var toQueue = [];
+  var toBusy = false;
+
+  function queueTakeover(item) {
+    if (toQueue.length >= 6) return;    // при порой не ги трупаме безкрай
+    toQueue.push(item);
+    nextTakeover();
+  }
+
+  function nextTakeover() {
+    if (toBusy || !toQueue.length) return;
+    // Картата за края на кръга е по-важна — изчакваме я
+    if (curtain.classList.contains("show")) {
+      setTimeout(nextTakeover, 600);
+      return;
+    }
+    toBusy = true;
+    var it = toQueue.shift();
+    var box = $("takeover");
+    var face = $("to-face");
+
+    face.innerHTML = "";
+    if (it.avatar) {
+      var img = document.createElement("img");
+      img.src = it.avatar;
+      img.alt = "";
+      img.onerror = function () {
+        face.textContent = (it.name || "?").charAt(0).toUpperCase();
+      };
+      face.appendChild(img);
+    } else {
+      face.textContent = (it.name || "?").charAt(0).toUpperCase();
+    }
+
+    $("to-name").textContent = it.name || "";
+    var team = it.team === BOYS ? "boys" : it.team === GIRLS ? "girls" : "none";
+    $("to-team").textContent =
+      team === "boys" ? "се качва на въжето за момчетата"
+    : team === "girls" ? "се качва на въжето за момичетата"
+    : "ни последва — напиши М или Ж и избери отбор";
+
+    box.className = "show " + team;
+    stage.classList.add("takeover-on");
+    if (S) S.follow();
+    shake(true);
+
+    setTimeout(function () {
+      box.className = "";
+      stage.classList.remove("takeover-on");
+      toBusy = false;
+      nextTakeover();
+    }, TAKEOVER_MS);
+  }
+
   /* ---------------------------------------------------------- краят на кръга */
 
   var curtainTimer = null;
@@ -332,20 +529,37 @@
       var it = feed[i];
       switch (it.kind) {
         case "follow":
-          say(it.text, "follow");
+          // Това е, което зрителят най-много иска да види: лицето си на
+          // целия екран. Затова не е ред в списъка, а цяла карта.
+          queueTakeover(it);
           break;
         case "power":
+          say(it.text, "gift");
+          if (S) S.power(it.power);
+          shake(it.power === "giant" || it.power === "reverse");
+          break;
         case "gift_no_team":
           say(it.text, "gift");
+          if (S) S.power("boost");
+          break;
+        case "joined_team":
+          if (S) S.join(it.team);
           break;
         case "switched_team":
           say(it.text, null);
+          if (S) S.join(it.team);
+          break;
+        case "round_start":
+          if (S) S.roundStart();
           break;
         case "round_end":
           showCurtain(it, st);
+          if (S) { S.siren(false); S.roundEnd(it.winner); }
+          dangerOn = false;
+          shake(true);
           break;
         default:
-          break;    // joined_team, join, tuned, power_end, round_start
+          break;    // join, tuned, power_end
       }
     }
   }
@@ -359,8 +573,11 @@
     if (!st) return;
     drawBoard(st);
     drawRope(st);
+    drawHeat(st);
     drawPullers(st);
     drawPowers(st);
+    drawCount(st);
+    drawDanger(st);
   }
 
   function connect() {
