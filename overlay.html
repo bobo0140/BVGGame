@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Момчета срещу момичета</title>
+<link rel="stylesheet" href="overlay.css">
+</head>
+<body>
+
+<div id="stage">
+
+  <div id="offline">Няма връзка с играта. Пусни приложението и опресни.</div>
+
+  <div id="band">
+
+    <div id="scoreboard">
+      <div class="side boys">
+        <div class="team-name" id="name-boys">Момчета</div>
+        <div class="team-meta" id="meta-boys">0 души</div>
+      </div>
+
+      <div id="tally">
+        <span id="wins-boys">0</span>
+        <span class="dash">–</span>
+        <span id="wins-girls">0</span>
+      </div>
+
+      <div class="side girls right">
+        <div class="team-name" id="name-girls">Момичета</div>
+        <div class="team-meta" id="meta-girls">0 души</div>
+      </div>
+    </div>
+
+    <div id="arena">
+      <div class="post left"></div>
+      <div class="post right"></div>
+      <div id="rope-line"></div>
+      <div id="pullers"></div>
+      <div id="knot">
+        <div class="band"></div>
+        <div class="tails"><i></i><i></i></div>
+      </div>
+    </div>
+
+    <div id="underline">
+      <div id="clock">1:30</div>
+      <div id="howto">Напиши <b>М</b> или <b>Ж</b> и тапай</div>
+      <div id="round-label">Кръг 1</div>
+    </div>
+
+  </div>
+
+  <div id="below">
+    <div id="powers"></div>
+    <div id="ticker"></div>
+  </div>
+
+  <div id="curtain">
+    <div class="card">
+      <div class="who" id="cur-who">Момчета</div>
+      <div class="how" id="cur-how">изтеглиха въжето</div>
+      <div class="hero" id="cur-hero"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="overlay.js"></script>
+</body>
+</html>

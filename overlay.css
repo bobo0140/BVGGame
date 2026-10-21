@@ -1,0 +1,369 @@
+/* ==========================================================================
+   Картината за OBS — панаирджийски афиш, не неонов интерфейс.
+
+   Правила, от които не отстъпваме:
+   - фонът е прозрачен, OBS слага видеото отдолу
+   - всичко се чете на телефон, върху произволно видео
+   - смелостта е във въжето; таблото е тихо
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Bitter:wght@500;700;900&display=swap');
+
+:root {
+  /* Петролено срещу бордо — допълнителни цветове от шевицата. Различават
+     се от пръв поглед върху всякакво видео и не са синьо/розово. */
+  --boys:        #0E5C63;
+  --boys-light:  #1E8A93;
+  --girls:       #A4252B;
+  --girls-light: #D14450;
+
+  --ink:    #1A1410;   /* мастилото на афиша */
+  --board:  #F2E9D6;   /* рисуваната дъска */
+  --rope:   #C9A66B;   /* коноп */
+  --rope-d: #8E7140;
+  --ribbon: #FBF7EE;   /* лентата на възела */
+  --win:    #E0A020;   /* златото за героя */
+
+  --stage-w: 1080px;
+  --stage-h: 1920px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%; height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: Bitter, 'Noto Serif', Georgia, 'Times New Roman', serif;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Сцената е с фиксиран размер и се свива до прозореца, за да изглежда
+   еднакво в OBS и в браузъра при преглед. */
+#stage {
+  position: absolute; top: 0; left: 0;
+  width: var(--stage-w); height: var(--stage-h);
+  transform-origin: top left;
+}
+
+/* Лентата, в която живее играта. Горната трета — лицето остава свободно,
+   долната четвърт е за коментарите на TikTok. */
+#band {
+  position: absolute;
+  top: 250px; left: 0; right: 0;
+  padding: 0 46px;
+}
+
+/* ---------- таблото ---------- */
+
+#scoreboard {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 18px;
+  margin-bottom: 26px;
+}
+
+.side { display: flex; flex-direction: column; gap: 8px; }
+.side.right { align-items: flex-end; text-align: right; }
+
+.team-name {
+  font-weight: 900;
+  font-size: 58px;
+  line-height: 0.92;
+  letter-spacing: -0.5px;
+  text-transform: uppercase;
+  color: var(--board);
+  /* Дебел мастилен контур — така се чете върху всякакво видео, без да
+     слагаме полупрозрачна кутия отгоре. */
+  -webkit-text-stroke: 7px var(--ink);
+  paint-order: stroke fill;
+}
+.side.boys  .team-name { color: #7FD4DB; }
+.side.girls .team-name { color: #FF9AA2; }
+
+.team-meta {
+  font-weight: 700;
+  font-size: 27px;
+  color: var(--board);
+  -webkit-text-stroke: 5px var(--ink);
+  paint-order: stroke fill;
+}
+
+/* Победите — рисувани чертички, не цифри в кутийка */
+#tally {
+  display: flex; align-items: center; gap: 14px;
+  font-weight: 900; font-size: 64px; line-height: 1;
+  color: var(--board);
+  -webkit-text-stroke: 7px var(--ink);
+  paint-order: stroke fill;
+}
+#tally .dash { font-size: 40px; opacity: .75; }
+
+/* ---------- въжето: героят на картината ---------- */
+
+#arena { position: relative; height: 300px; }
+
+#rope-line {
+  position: absolute;
+  top: 128px; left: 0; right: 0; height: 44px;
+  border-radius: 22px;
+  background:
+    repeating-linear-gradient(72deg,
+      var(--rope-d) 0 7px, var(--rope) 7px 20px);
+  border: 6px solid var(--ink);
+  box-shadow: inset 0 -8px 0 rgba(0, 0, 0, .22);
+}
+
+/* Крайните стълбове — показват докъде трябва да се изтегли */
+.post {
+  position: absolute; top: 86px;
+  width: 20px; height: 128px;
+  background: var(--ink);
+  border-radius: 4px;
+}
+.post.left  { left: -4px; }
+.post.right { right: -4px; }
+.post::after {
+  content: ''; position: absolute; left: -16px; top: -18px;
+  width: 52px; height: 22px; border-radius: 4px;
+  background: var(--ink);
+}
+
+/* Възелът — бялата лента. Тя е това, което всички гледат. */
+#knot {
+  position: absolute; top: 56px; left: 50%;
+  width: 96px; height: 188px;
+  margin-left: -48px;
+  z-index: 40;                      /* възелът стои пред теглачите */
+  display: flex; align-items: center; justify-content: center;
+  transition: left .18s cubic-bezier(.25, .9, .3, 1);
+  will-change: left;
+}
+#knot .band {
+  width: 56px; height: 188px;
+  background: var(--ribbon);
+  border: 6px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 0 0 0 4px rgba(26, 20, 16, .18);
+}
+#knot .tails {
+  position: absolute; top: 180px; left: 50%; margin-left: -34px;
+  width: 68px; height: 46px;
+}
+#knot .tails i {
+  position: absolute; top: 0; width: 20px; height: 44px;
+  background: var(--ribbon);
+  border: 5px solid var(--ink);
+  border-radius: 3px;
+}
+#knot .tails i:first-child { left: 2px;  transform: rotate(-24deg); }
+#knot .tails i:last-child  { right: 2px; transform: rotate(24deg); }
+
+/* Залитането при силно дърпане */
+#knot.yank-l { animation: yankL .34s ease-out; }
+#knot.yank-r { animation: yankR .34s ease-out; }
+@keyframes yankL { 40% { transform: translateX(-26px) rotate(-7deg); } }
+@keyframes yankR { 40% { transform: translateX(26px)  rotate(7deg); } }
+
+/* Теглачите — аватарите на тези, които са последвали днес */
+#pullers {
+  position: absolute; top: 0; left: 0; right: 0; height: 300px;
+  z-index: 10;
+}
+.puller {
+  position: absolute; top: 104px;
+  width: 92px; height: 92px;
+  transition: left .5s cubic-bezier(.3, .8, .3, 1);
+}
+.puller img, .puller .ph {
+  width: 92px; height: 92px; border-radius: 50%;
+  border: 6px solid var(--ink);
+  object-fit: cover; display: block;
+  background: var(--board);
+}
+.puller .ph {
+  display: grid; place-items: center;
+  font-weight: 900; font-size: 40px; color: var(--ink);
+}
+.puller.boys  img, .puller.boys  .ph { box-shadow: 0 0 0 7px var(--boys-light); }
+.puller.girls img, .puller.girls .ph { box-shadow: 0 0 0 7px var(--girls-light); }
+/* Още няма отбор — стои при губещия, но без цвят, за да се вижда,
+   че мястото му е свободно. */
+.puller.neutral img, .puller.neutral .ph {
+  box-shadow: 0 0 0 7px rgba(242, 233, 214, .85);
+  filter: grayscale(1);
+}
+.puller .tag {
+  position: absolute; top: 96px; left: 50%; transform: translateX(-50%);
+  max-width: 104px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; font-weight: 700; font-size: 21px; text-align: center;
+  color: var(--board); -webkit-text-stroke: 4px var(--ink);
+  paint-order: stroke fill;
+}
+/* При много теглачи имената се слепват — показваме само най-предните */
+.puller.quiet .tag { display: none; }
+.puller.fresh { animation: drop .5s cubic-bezier(.2, 1.5, .4, 1); }
+@keyframes drop {
+  from { transform: translateY(-120px) scale(.4); opacity: 0; }
+}
+
+/* ---------- под въжето ---------- */
+
+#underline {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  margin-top: 6px;
+}
+
+#clock {
+  font-weight: 900; font-size: 50px; line-height: 1;
+  color: var(--board);
+  -webkit-text-stroke: 6px var(--ink);
+  paint-order: stroke fill;
+}
+#clock.urgent { color: var(--win); animation: beat .6s steps(2, end) infinite; }
+@keyframes beat { 50% { opacity: .45; } }
+
+#round-label {
+  font-weight: 700; font-size: 30px; text-align: right;
+  color: var(--board);
+  -webkit-text-stroke: 5px var(--ink);
+  paint-order: stroke fill;
+}
+
+/* Най-важният текст на екрана: какво да направи новият зрител. */
+#howto {
+  justify-self: center;
+  font-weight: 700; font-size: 32px; text-align: center;
+  padding: 10px 26px;
+  background: var(--board);
+  border: 6px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 6px 6px 0 rgba(26, 20, 16, .35);
+}
+#howto b { font-weight: 900; }
+#howto.boys-help  { background: #BEE9ED; }
+#howto.girls-help { background: #F6C9CD; }
+
+/* ---------- силите ---------- */
+
+/* Силите и съобщенията са една колона под въжето — така не се застъпват,
+   колкото и да са. Под тях остава празно: там е лицето на стриймъра. */
+#below {
+  position: absolute; top: 742px; left: 46px; right: 46px;
+  display: flex; flex-direction: column; gap: 16px;
+  transition: opacity .2s linear;
+}
+/* Докато е вдигната картата за края на кръга, долу не се чете нищо —
+   едно нещо на екрана, а не две едно върху друго. */
+#stage.curtain-on #below { opacity: 0; }
+
+#powers { display: flex; flex-direction: column; gap: 14px; }
+.power {
+  align-self: flex-start;
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 26px;
+  background: var(--board);
+  border: 7px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 8px 8px 0 rgba(26, 20, 16, .4);
+  animation: slam .34s cubic-bezier(.2, 1.6, .4, 1);
+}
+.power.girls { align-self: flex-end; }
+.power .pname { font-weight: 900; font-size: 42px; letter-spacing: -0.5px; }
+.power .pwho  { font-weight: 700; font-size: 28px; opacity: .8; }
+.power .pbar {
+  width: 150px; height: 14px; border: 4px solid var(--ink);
+  border-radius: 8px; overflow: hidden; background: #fff;
+}
+.power .pbar i { display: block; height: 100%; background: var(--win); }
+.power.boys  { border-color: var(--boys);  }
+.power.girls { border-color: var(--girls); }
+@keyframes slam {
+  from { transform: scale(.7) rotate(-3deg); opacity: 0; }
+}
+
+/* ---------- преливащи съобщения ---------- */
+
+#ticker {
+  display: flex; flex-direction: column; gap: 10px;
+  align-items: center;
+}
+.msg {
+  font-weight: 700; font-size: 30px; text-align: center;
+  padding: 8px 22px;
+  background: rgba(242, 233, 214, .95);
+  border: 5px solid var(--ink);
+  border-radius: 12px;
+  animation: pop .3s ease-out;
+}
+.msg.follow { background: var(--win); font-weight: 900; font-size: 34px; }
+.msg.gift   { background: #FFE9A8; }
+@keyframes pop { from { transform: translateY(16px); opacity: 0; } }
+
+/* ---------- краят на кръга ---------- */
+
+/* Картата за края на кръга стои ПОД лентата, за да се вижда и къде е
+   спряло въжето — това е половината от удоволствието. */
+#curtain {
+  position: absolute; inset: 0;
+  display: none; justify-items: center; align-items: start;
+  padding-top: 790px;
+  pointer-events: none;
+}
+#curtain.show { display: grid; }
+#curtain .card {
+  text-align: center;
+  padding: 54px 72px;
+  background: var(--board);
+  border: 10px solid var(--ink);
+  border-radius: 26px;
+  box-shadow: 16px 16px 0 rgba(26, 20, 16, .45);
+  animation: slam .4s cubic-bezier(.2, 1.5, .4, 1);
+}
+#curtain .who {
+  font-weight: 900; font-size: 92px; line-height: 1;
+  text-transform: uppercase;
+}
+#curtain .how { font-weight: 700; font-size: 34px; margin-top: 12px; opacity: .8; }
+#curtain .hero {
+  margin-top: 34px; padding-top: 28px;
+  border-top: 5px solid rgba(26, 20, 16, .25);
+  display: flex; align-items: center; gap: 22px; justify-content: center;
+}
+#curtain .hero img, #curtain .hero .ph {
+  width: 124px; height: 124px; border-radius: 50%;
+  border: 7px solid var(--ink); object-fit: cover;
+  box-shadow: 0 0 0 8px var(--win);
+  background: #fff;
+  display: grid; place-items: center;
+  font-weight: 900; font-size: 54px;
+}
+#curtain .hero .txt { text-align: left; }
+#curtain .hero .lbl { font-weight: 700; font-size: 26px; opacity: .7; }
+#curtain .hero .nm  { font-weight: 900; font-size: 46px; line-height: 1.05; }
+
+/* ---------- когато няма връзка ---------- */
+
+#offline {
+  position: absolute; top: 120px; left: 46px; right: 46px;
+  display: none;
+  font-weight: 700; font-size: 32px; text-align: center;
+  padding: 18px 26px;
+  background: var(--board);
+  border: 6px solid var(--ink);
+  border-radius: 14px;
+}
+#offline.show { display: block; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

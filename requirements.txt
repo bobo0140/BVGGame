@@ -1,0 +1,3 @@
+aiohttp>=3.9
+TikTokLive>=6.4
+websockets>=12.0

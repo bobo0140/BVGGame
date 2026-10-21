@@ -1,0 +1,59 @@
+name: Build BVGGame
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Инсталиране
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Тестове на правилата
+        run: python tests_game.py
+
+      - name: Сглобяване на .exe
+        run: >
+          pyinstaller --onefile --name BVGGame
+          --add-data "overlay.html;."
+          --add-data "overlay.css;."
+          --add-data "overlay.js;."
+          --hidden-import aiohttp
+          --hidden-import TikTokLive
+          --hidden-import websockets
+          main.py
+
+      - name: Проверка, че файлът го има
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "dist/BVGGame.exe")) {
+            Write-Error "BVGGame.exe липсва — сглобяването е пропаднало."
+            exit 1
+          }
+          $mb = [math]::Round((Get-Item "dist/BVGGame.exe").Length / 1MB, 1)
+          Write-Host "BVGGame.exe е готов — $mb MB"
+
+      - name: Качване като release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: BVGGame — последна версия
+          files: dist/BVGGame.exe
+          prerelease: false
+          make_latest: true
