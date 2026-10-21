@@ -166,6 +166,7 @@ async def run(cfg: dict) -> None:
     log(f"  Картината за OBS:  {url}")
     log("  Browser source, 1080x1920, прозрачен фон.")
     log(f"  Пулт с бутони:     {url}test")
+    log("  Смяна на източника: BVGGame.exe --menu")
     log("  Спиране: Ctrl+C")
     log("=" * 58)
     log("")
@@ -194,20 +195,33 @@ async def run(cfg: dict) -> None:
 
 def ask_setup(cfg: dict) -> None:
     """
-    Първо пускане: пита за TikTok името веднъж и го запомня. Ако няма
-    кой да отговори (пуснато от скрипт), не блокира — минава на проба.
+    Менюто при първо пускане. Пита веднъж и помни избора. Ако няма кой
+    да отговори (пуснато от скрипт или от Task Scheduler), не блокира.
     """
     if not sys.stdin or not sys.stdin.isatty():
         return
     print(HELLO)
-    print("  Напиши TikTok потребителя си (без @).")
-    print("  Enter без нищо = проба с фалшиви зрители.\n")
+    print("  Какво да пусна?\n")
+    print("    1   TikTok — твоят стрийм")
+    print("    2   Проба — фалшиви зрители играят сами")
+    print("    3   Само пултът с бутоните\n")
     try:
-        ans = input("  TikTok потребител: ").strip().lstrip("@")
+        ans = input("  Избери 1, 2 или 3 (Enter = 2): ").strip()
     except (EOFError, KeyboardInterrupt):
         return
-    if ans:
-        cfg["source"], cfg["tiktok_username"] = "tiktok", ans
+
+    if ans == "1":
+        try:
+            user = input("  TikTok потребител (без @): ").strip().lstrip("@")
+        except (EOFError, KeyboardInterrupt):
+            return
+        if user:
+            cfg["source"], cfg["tiktok_username"] = "tiktok", user
+            return
+        print("  Няма име — пускам проба.")
+        cfg["source"] = "sim"
+    elif ans == "3":
+        cfg["source"] = "none"
     else:
         cfg["source"] = "sim"
 
@@ -223,6 +237,8 @@ def main() -> int:
     ap.add_argument("--viewers", type=int, help="колко фалшиви зрители")
     ap.add_argument("--intensity", type=float, help="колко бързо тапат")
     ap.add_argument("--round", type=float, help="секунди на кръг")
+    ap.add_argument("--menu", action="store_true",
+                    help="пита пак какво да пусне")
     a = ap.parse_args()
 
     if a.source:    cfg["source"] = a.source
@@ -232,8 +248,8 @@ def main() -> int:
     if a.intensity: cfg["sim_intensity"] = a.intensity
     if a.round:     cfg["round_seconds"] = a.round
 
-    # Само при първо пускане и само ако не е казано нищо от командния ред
-    if first_run and not (a.source or a.user):
+    # При първо пускане, или когато изрично е поискано меню
+    if (first_run or a.menu) and not (a.source or a.user):
         ask_setup(cfg)
 
     save_config(cfg)
