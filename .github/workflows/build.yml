@@ -34,6 +34,7 @@ jobs:
           --add-data "overlay.html;."
           --add-data "overlay.css;."
           --add-data "overlay.js;."
+          --add-data "test.html;."
           --hidden-import aiohttp
           --hidden-import TikTokLive
           --hidden-import websockets

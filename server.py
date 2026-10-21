@@ -33,11 +33,17 @@ class Server:
         self._runner: web.AppRunner | None = None
         self._pump: asyncio.Task | None = None
         self.status: dict = {"source": "", "connected": False, "note": ""}
+        # Пулта за проба го закача main.py. Без него страницата /test се
+        # отваря, но бутоните не правят нищо.
+        self.on_cmd = None
 
     # -- маршрути ----------------------------------------------------------
 
     async def _h_index(self, _req: web.Request) -> web.Response:
         return web.FileResponse(WEB_DIR / "overlay.html")
+
+    async def _h_test(self, _req: web.Request) -> web.Response:
+        return web.FileResponse(WEB_DIR / "test.html")
 
     async def _h_file(self, req: web.Request) -> web.Response:
         name = req.match_info["name"]
@@ -60,8 +66,11 @@ class Server:
                     continue
                 with contextlib.suppress(Exception):
                     data = json.loads(msg.data)
-                    if data.get("cmd") == "ping":
+                    cmd = data.get("cmd")
+                    if cmd == "ping":
                         await ws.send_json({"type": "pong"})
+                    elif cmd and self.on_cmd is not None:
+                        self.on_cmd(data)
         except Exception:
             pass
         finally:
@@ -100,6 +109,8 @@ class Server:
         app = web.Application()
         app.router.add_get("/", self._h_index)
         app.router.add_get("/overlay.html", self._h_index)
+        app.router.add_get("/test", self._h_test)
+        app.router.add_get("/test.html", self._h_test)
         app.router.add_get("/{name}", self._h_file)
         app.router.add_get("/ws", self._h_ws)
 
@@ -118,6 +129,7 @@ class Server:
         url = f"http://127.0.0.1:{self.port}/"
         self.log(f"[Картина] Готова на {url}")
         self.log("[OBS] Добави Browser source с този адрес, 1080x1920.")
+        self.log(f"[Проба] Пулт с бутони: {url}test")
         return url
 
     async def stop(self) -> None:

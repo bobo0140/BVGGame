@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Пулт за проба — Момчета срещу момичета</title>
+<style>
+  /* Това не е картината за стрийма, а работен пулт. Затова е тъмен,
+     бутоните са едри и всичко се вижда наведнъж. */
+  :root {
+    --bg:    #16120F;
+    --panel: #241D18;
+    --line:  #3A2F27;
+    --text:  #F2E9D6;
+    --dim:   #A79681;
+    --boys:  #0E5C63;
+    --boys-l:#1E8A93;
+    --girls: #A4252B;
+    --girls-l:#D14450;
+    --gold:  #E0A020;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: Bitter, 'Noto Serif', Georgia, serif;
+    padding: 24px 20px 60px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+
+  h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.3px; }
+  .sub { color: var(--dim); font-size: 15px; margin-top: 4px; line-height: 1.5; }
+  .sub code {
+    font-family: ui-monospace, Consolas, monospace;
+    background: var(--panel); padding: 2px 6px; border-radius: 5px;
+  }
+
+  /* ---- състоянието на живо ---- */
+  .board {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 20px; margin: 22px 0;
+  }
+  .rope {
+    position: relative; height: 20px; border-radius: 10px;
+    background: linear-gradient(90deg, var(--boys) 0%, #2A221C 48%,
+                                       #2A221C 52%, var(--girls) 100%);
+    margin: 14px 0 10px;
+  }
+  .rope .mid {
+    position: absolute; left: 50%; top: -6px; width: 2px; height: 32px;
+    background: var(--line);
+  }
+  .rope .knot {
+    position: absolute; top: -7px; left: 50%; width: 16px; height: 34px;
+    margin-left: -8px; border-radius: 5px;
+    background: var(--text); box-shadow: 0 0 0 2px var(--bg);
+    transition: left .15s ease-out;
+  }
+  .nums {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 15px; color: var(--dim);
+  }
+  .nums b { color: var(--text); font-size: 17px; }
+  .score { text-align: center; font-size: 30px; font-weight: 700; }
+  .powers { margin-top: 12px; font-size: 15px; color: var(--gold); min-height: 22px; }
+
+  /* ---- кой праща ---- */
+  .who { display: flex; gap: 10px; margin: 26px 0 8px; }
+  .who button {
+    flex: 1; padding: 16px 10px; font-size: 17px; font-weight: 700;
+    font-family: inherit; color: var(--dim); cursor: pointer;
+    background: var(--panel); border: 2px solid var(--line);
+    border-radius: 12px;
+  }
+  .who button[aria-pressed="true"] { color: var(--text); }
+  .who button[data-team="M"][aria-pressed="true"] {
+    background: var(--boys); border-color: var(--boys-l);
+  }
+  .who button[data-team="F"][aria-pressed="true"] {
+    background: var(--girls); border-color: var(--girls-l);
+  }
+  .who button[data-team="-"][aria-pressed="true"] {
+    background: #3A2F27; border-color: var(--dim);
+  }
+
+  /* ---- групите бутони ---- */
+  h2 {
+    font-size: 14px; font-weight: 700; color: var(--dim);
+    margin: 26px 0 10px;
+  }
+  .row {
+    display: grid; gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(186px, 1fr));
+  }
+  .row button {
+    padding: 18px 12px; cursor: pointer;
+    font-family: inherit; font-size: 17px; font-weight: 700;
+    color: var(--text); background: var(--panel);
+    border: 2px solid var(--line); border-radius: 12px;
+    text-align: left; line-height: 1.25;
+  }
+  .row button small {
+    display: block; font-size: 13px; font-weight: 500; color: var(--dim);
+    margin-top: 3px;
+  }
+  .row button:hover { border-color: var(--dim); }
+  .row button:active { transform: translateY(1px); }
+  .row button.gold { border-color: #6A5120; }
+  .row button.gold:hover { border-color: var(--gold); }
+
+  .note {
+    margin-top: 28px; padding: 16px 18px; font-size: 15px; line-height: 1.6;
+    color: var(--dim); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 12px;
+  }
+  .off {
+    display: none; margin-bottom: 18px; padding: 14px 18px;
+    background: #4A1B1B; border: 1px solid #7A2E2E; border-radius: 12px;
+  }
+  .off.show { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Пулт за проба</h1>
+  <p class="sub">
+    Всеки бутон праща същото, което би пратил истински зрител — през същия
+    път. Картината е на <code>http://127.0.0.1:8900/</code>, отвори я до
+    този прозорец или я гледай в OBS.
+  </p>
+
+  <div class="off" id="off">Няма връзка с играта. Пусни BVGGame.exe.</div>
+
+  <div class="board">
+    <div class="score"><span id="w-m">0</span> – <span id="w-f">0</span></div>
+    <div class="rope"><div class="mid"></div><div class="knot" id="knot"></div></div>
+    <div class="nums">
+      <span>Момчета <b id="c-m">0</b></span>
+      <span id="round">Кръг 1 · 1:30</span>
+      <span><b id="c-f">0</b> Момичета</span>
+    </div>
+    <div class="powers" id="powers"></div>
+  </div>
+
+  <h2>КОЙ ПРАЩА</h2>
+  <div class="who" id="who">
+    <button data-team="M" aria-pressed="true">Момчета</button>
+    <button data-team="F" aria-pressed="false">Момичета</button>
+    <button data-team="-" aria-pressed="false">Без отбор</button>
+  </div>
+
+  <h2>ЗРИТЕЛИ</h2>
+  <div class="row">
+    <button data-cmd="add" data-n="1">+1 зрител<small>влиза и си избира отбора</small></button>
+    <button data-cmd="add" data-n="5">+5 зрители<small>наведнъж</small></button>
+    <button data-cmd="add" data-n="20">+20 зрители<small>пълна зала</small></button>
+  </div>
+
+  <h2>ДЕЙСТВИЯ</h2>
+  <div class="row">
+    <button data-cmd="act" data-act="like" data-times="1">Тап<small>1 точка</small></button>
+    <button data-cmd="act" data-act="like" data-times="20">Тап × 20<small>двайсет души тапат</small></button>
+    <button data-cmd="act" data-act="like" data-times="100">Тап × 100<small>бясно тапане</small></button>
+    <button data-cmd="act" data-act="comment" data-times="1">Коментар<small>5 точки</small></button>
+    <button data-cmd="act" data-act="share" data-times="1">Споделяне<small>25 точки</small></button>
+    <button data-cmd="act" data-act="follow" data-times="1">Последване<small>50 точки + лице на въжето</small></button>
+  </div>
+
+  <h2>ГИФТОВЕ</h2>
+  <div class="row">
+    <button class="gold" data-cmd="act" data-act="gift" data-coins="1">1 монета<small>ПОДКРЕПА — само точки</small></button>
+    <button class="gold" data-cmd="act" data-act="gift" data-coins="10">10 монети<small>БУРЯ — 15 сек двойни тапове</small></button>
+    <button class="gold" data-cmd="act" data-act="gift" data-coins="100">100 монети<small>САБОТАЖ — 10 сек другите тапат напразно</small></button>
+    <button class="gold" data-cmd="act" data-act="gift" data-coins="500">500 монети<small>ОБРАТ — въжето се преобръща</small></button>
+    <button class="gold" data-cmd="act" data-act="gift" data-coins="2000">2000 монети<small>ВЕЛИКАН — 20 сек тегли сам</small></button>
+  </div>
+
+  <h2>КРЪГ</h2>
+  <div class="row">
+    <button data-cmd="round" data-do="start">Започни кръг<small>ако е пауза</small></button>
+    <button data-cmd="round" data-do="end">Свърши кръга<small>показва победителя сега</small></button>
+  </div>
+
+  <p class="note">
+    Опитай така: сложи 20 момчета и 20 момичета, натисни <b>Тап × 100</b> за
+    момчетата и гледай как въжето отива наляво. После спри — въжето само се
+    връща към центъра. Това е пружината: позицията показва кой натиска сега.
+    После пусни <b>100 монети</b> от момичетата и пак тапай с момчетата —
+    няма да помръдне, защото са саботирани.
+  </p>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var team = "M";
+  var ws = null, retry = null;
+
+  function send(payload) {
+    if (!ws || ws.readyState !== 1) return;
+    payload.team = (team === "-") ? null : team;
+    ws.send(JSON.stringify(payload));
+  }
+
+  document.getElementById("who").addEventListener("click", function (e) {
+    var b = e.target.closest("button");
+    if (!b) return;
+    team = b.dataset.team;
+    var all = this.querySelectorAll("button");
+    for (var i = 0; i < all.length; i++) {
+      all[i].setAttribute("aria-pressed", all[i] === b ? "true" : "false");
+    }
+  });
+
+  document.body.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-cmd]");
+    if (!b) return;
+    var d = b.dataset;
+    if (d.cmd === "add") {
+      send({ cmd: "add", n: parseInt(d.n, 10) });
+    } else if (d.cmd === "act") {
+      send({ cmd: "act", act: d.act,
+             times: parseInt(d.times || "1", 10),
+             coins: parseInt(d.coins || "0", 10) });
+    } else if (d.cmd === "round") {
+      send({ cmd: "round", do: d.do });
+    }
+  });
+
+  function fmt(sec) {
+    sec = Math.max(0, Math.round(sec));
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return m + ":" + (s < 10 ? "0" : "") + s;
+  }
+
+  function draw(st) {
+    if (!st) return;
+    document.getElementById("knot").style.left =
+      (50 + Math.max(-1, Math.min(1, st.rope || 0)) * 48) + "%";
+    document.getElementById("w-m").textContent = (st.wins || {}).M || 0;
+    document.getElementById("w-f").textContent = (st.wins || {}).F || 0;
+    document.getElementById("c-m").textContent = (st.team_counts || {}).M || 0;
+    document.getElementById("c-f").textContent = (st.team_counts || {}).F || 0;
+    document.getElementById("round").textContent =
+      "Кръг " + (st.round_no || 1) + " · " +
+      (st.running ? fmt(st.seconds_left) : "пауза") +
+      " · праг " + (st.threshold || 0);
+    var p = (st.powers || []).map(function (x) {
+      return x.name + " (" + (x.team === "M" ? "М" : "Ж") + ") " +
+             Math.round(x.left) + " сек";
+    });
+    document.getElementById("powers").textContent = p.join("   ·   ");
+  }
+
+  function connect() {
+    ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://")
+                       + location.host + "/ws");
+    ws.onopen = function () {
+      document.getElementById("off").classList.remove("show");
+    };
+    ws.onmessage = function (ev) {
+      var m;
+      try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m.type === "tick" || m.type === "hello") draw(m.state);
+    };
+    ws.onclose = function () {
+      document.getElementById("off").classList.add("show");
+      if (!retry) retry = setTimeout(function () { retry = null; connect(); }, 2000);
+    };
+  }
+  connect();
+})();
+</script>
+</body>
+</html>

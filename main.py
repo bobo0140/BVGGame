@@ -23,7 +23,9 @@ from pathlib import Path
 
 from game_core import Act, Game, Settings
 from server import Server
-from tiktok_source import Incoming, SimSource, TikFinitySource, TikTokLiveSource
+from testpanel import TestPanel
+from tiktok_source import (Incoming, NullSource, SimSource, TikFinitySource,
+                           TikTokLiveSource)
 
 if getattr(sys, "frozen", False):
     BASE = Path(sys.executable).parent
@@ -135,6 +137,8 @@ def build_source(cfg: dict, q: asyncio.Queue):
         return TikTokLiveSource(user, q, log)
     if kind == "tikfinity":
         return TikFinitySource(q, log)
+    if kind == "none":
+        return NullSource(log)
     return SimSource(q, log, int(cfg["sim_viewers"]),
                      float(cfg["sim_intensity"]))
 
@@ -143,6 +147,8 @@ async def run(cfg: dict) -> None:
     q: asyncio.Queue = asyncio.Queue(maxsize=5000)
     game = Game(Settings(round_seconds=float(cfg["round_seconds"])))
     server = Server(game, log, int(cfg["port"]))
+
+    server.on_cmd = TestPanel(game, q, log).handle
 
     url = await server.start()
     source = build_source(cfg, q)
@@ -159,6 +165,7 @@ async def run(cfg: dict) -> None:
     log("=" * 58)
     log(f"  Картината за OBS:  {url}")
     log("  Browser source, 1080x1920, прозрачен фон.")
+    log(f"  Пулт с бутони:     {url}test")
     log("  Спиране: Ctrl+C")
     log("=" * 58)
     log("")
@@ -210,7 +217,7 @@ def main() -> int:
     cfg = load_config()
 
     ap = argparse.ArgumentParser(description="Момчета срещу момичета")
-    ap.add_argument("--source", choices=("sim", "tiktok", "tikfinity"))
+    ap.add_argument("--source", choices=("sim", "tiktok", "tikfinity", "none"))
     ap.add_argument("--user", help="TikTok потребител (без @)")
     ap.add_argument("--port", type=int)
     ap.add_argument("--viewers", type=int, help="колко фалшиви зрители")
